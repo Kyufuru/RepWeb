@@ -1,0 +1,93 @@
+﻿html, body, .el-container {
+    width: 100%;
+    height: 100%;
+    background-color: #ebf5fa;
+}
+
+.el-table .el-table__cell {
+    padding: 3px 0px;
+    font-size: 15px;
+}
+
+.el-form .el-input .el-input__inner {
+    text-align: center;
+}
+
+.el-date-editor.el-input, .el-input-number {
+    width: 100%;
+}
+
+.el-table input {
+    height: 100%;
+    border: hidden;
+    padding: 5px 0px;
+    text-align: center;
+}
+
+.el-progress-bar__inner {
+    border-radius: 0px;
+}
+
+.el-table__body tr.current-row > td {
+    color: #fff;
+    font-weight: bold;
+    background-color: royalblue !important;
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner, .el-checkbox__input.is-indeterminate .el-checkbox__inner {
+    background-color: royalblue;
+    border-color: royalblue;
+}
+
+.el-collapse .el-collapse-item__header {
+    padding-left: 48%;
+    height: 30px;
+}
+
+.el-collapse-item__content {
+    padding: 0px;
+}
+
+.el-progress, .el-progress .el-progress-bar__outer {
+    border-radius: 0px;
+}
+
+.el-dialog__body {
+    padding: 10px;
+}
+
+.el-table__body tr.current-row > td.el-table__cell {
+    background-color: floralwhite;
+}
+
+.el-tabs__nav-scroll {
+    padding: 0px 10px;
+}
+
+.gantt-timeline {
+    padding-left: 24px;
+}
+
+.gantt-block-item {
+    min-width: 60px;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.gantt-body {
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.title input {
+    text-align: center;
+    font-weight: 700;
+}
+
+.overflow-ellipsis {
+    overflow: hidden;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+    display: flex;
+    align-items: center;
+}

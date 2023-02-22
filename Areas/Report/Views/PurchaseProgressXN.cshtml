@@ -1,0 +1,345 @@
+﻿<!DOCTYPE html>
+
+<html lang="zh-cn">
+<head>
+    <meta name="viewport" content="width=device-width" charset="utf-8" />
+    <title>新能采购进度表</title>
+    <link rel="stylesheet" href="/Scripts/element-ui/theme-chalk/index.css">
+    <link rel="stylesheet" href="/Content/bootstrap.min.css">
+    <link rel="stylesheet" href="/Content/site/site.css">
+    <link rel="stylesheet" href="/Content/site/PurchaseProgressXN.css">
+</head>
+<body>
+    <section id="vue">
+        <div class="bg-bluegradient py-2 px-4 fs-4 text-white">新能采购进度表</div>
+        <el-tabs class="bg-ghostwhite p-2" v-model="curTab">
+            <el-tab-pane :style="mainHeight" label="配置信息" name="1">
+                <div class="row justify-content-start pb-2 px-1">
+                    <el-upload v-if="!setting.onlyRead" class="col-auto align-self-center pe-0" action="/api/Rep/Upload"
+                               :show-file-list="false"
+                               :on-progress="dataLoading"
+                               :on-success="dataLoaded"
+                               :on-error="dataError">
+                        <el-button type="primary" size="mini" icon="el-icon-folder-opened">导入</el-button>
+                    </el-upload>
+                    <div v-if="!setting.onlyRead" class="col-auto align-self-center px-1">
+                        <el-popconfirm title="确定要删除吗？" placement="right-start"
+                                       icon="el-icon-warning" icon-color="red"
+                                       v-model="setting.del"
+                                       @@confirm="tblExecute('del')">
+                            <el-button type="danger" size="mini" icon="el-icon-delete" slot="reference">删除</el-button>
+                        </el-popconfirm>
+                    </div>
+                    <el-button-group class="col-auto">
+                        <el-button v-if="!setting.onlyRead" size="small" icon="el-icon-plus" @@click="showDial('add')">新增</el-button>
+                        <el-button size="small" icon="el-icon-document-add" @@click="showDial('load')">加载</el-button>
+                        <el-button v-if="!setting.onlyRead" size="small" icon="el-icon-tickets" @@click="showDial('sav')">保存</el-button>
+                        <el-button size="small" icon="el-icon-printer" @@click="tblExecute('pnt')">打印</el-button>
+                        <el-button size="small" icon="el-icon-download" @@click="tblExecute('exp')">导出</el-button>
+                    </el-button-group>
+                    <el-switch v-if="!setting.onlyRead" class="col-auto align-self-center" active-text="编辑模式"
+                               size="small" icon="el-icon-edit-outline"
+                               v-model="setting.edit">
+                    </el-switch>
+                </div>
+                <div class="bg-white text-center" v-if="mat.length > 0">
+                    <div class="row title">
+                        <el-input class="fs-1 text-center" v-model="conf.标题" v-if="setting.edit"></el-input>
+                        <span class="fs-1 fw-bold" v-else>{{conf.标题}}</span>
+                    </div>
+                    <div class="row py-2">
+                        <el-form label-width="70px" label-position="center"
+                                 ref="conf" :model="conf" v-if="setting.edit" inline>
+                            <el-form-item class="mb-0" label="工程号">
+                                <el-input v-model="conf.工程号" size="small" placeholder="工程号"></el-input>
+                            </el-form-item>
+                            <el-form-item class="mb-0" label="公司名称">
+                                <el-input class="w-300" v-model="conf.公司名称" size="small" placeholder="公司名称"></el-input>
+                            </el-form-item>
+                            <el-form-item class="mb-0" label="负责人">
+                                <el-input v-model="conf.负责人" size="small" placeholder="负责人"></el-input>
+                            </el-form-item>
+                        </el-form>
+                        <div v-else>
+                            <span class="mx-3">工程号：{{conf.工程号}}</span>
+                            <span class="mx-3">公司名称：{{conf.公司名称}}</span>
+                            <span class="mx-3">负责人：{{conf.负责人}}</span>
+                        </div>
+                    </div>
+                    <div class="row px-2 bg-light">
+                        <div class="col-1">总进度：</div>
+                        <el-progress class="col p-0" stroke-linecap="square"
+                                     color="royalblue" text-color="white"
+                                     :text-inside="true" :stroke-width="24" :format="format"
+                                     :percentage="total()"></el-progress>
+                    </div>
+                    <el-table ref="tdata" :data="mat" :max-height="setting.wH - 290" border stripe
+                              header-cell-class-name="text-center" cell-class-name="p-0"
+                              v-loading="setting.tload"
+                              element-loading-text="加载中"
+                              element-loading-spinner="el-icon-loading"
+                              @@row-click="rowClick" @@selection-change="select">
+                        <el-table-column v-if="!setting.onlyRead" type="selection" width="55" align="center">
+                        </el-table-column>
+                        <el-table-column label="名称" width="260px" show-overflow-tooltip>
+                            <template slot-scope="scope">
+                                {{`${scope.row.类别}.${scope.row.名称}`}}
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="BOM" max-width="530px">
+                            <template slot-scope="scope">
+                                <el-tooltip placement="top" :disabled="!bomIsExist(scope.row.产品名称)">
+                                    <ul class="list-unstyled my-0 maxh-200 scoll-y" slot="content">
+                                        <li v-for="name in scope.row.产品名称" :key="name"
+                                            class="px-2">{{name}}</li>
+                                    </ul>
+                                    <div v-if="setting.edit">
+                                        <el-select class="w-100"
+                                                   v-model="scope.row.产品名称" placeholder="请选择"
+                                                   size="mini" multiple filterable collapse-tags
+                                                   :filter-method="matFind"
+                                                   @@focus="bomIsAllSel(scope.row.产品名称)"
+                                                   @@change="bomMatch(scope.row)"
+                                                   @@remove-tag="bomMatch(scope.row)">
+                                            <div class="text-end px-3">
+                                                <el-checkbox class="fs-smaller" v-model="setting.matAll"
+                                                             @@change="matAllSel(scope.row)">全选</el-checkbox>
+                                                <el-divider class="my-1"></el-divider>
+                                            </div>
+                                            <el-option v-for="m in partOptions" :key="m.物料名称" :value="m.物料名称">
+                                            </el-option>
+                                            <div v-if="options.length > 10 && options.length > loadNum" class="text-center">
+                                                <el-link class="fs-smaller" type="info"
+                                                         @@click="matLoadMore">加载更多</el-link>
+                                            </div>
+                                        </el-select>
+                                    </div>
+                                    <div v-else>
+                                        <span v-if="scope.row.产品名称.length > 0">{{scope.row.产品名称[0]}}</span>
+                                        <el-badge v-if="scope.row.产品名称.length > 1" type="info"
+                                                  :value="scope.row.产品名称.length" />
+                                    </div>
+                                </el-tooltip>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="图纸下发日期" align="center">
+                            <el-table-column label="计划" align="center"
+                                             width="150px" sortable
+                                             v-if="setting.edit">
+                                <template slot-scope="scope">
+                                    <el-date-picker placeholder="选择日期" size="mini"
+                                                    v-model="scope.row.图纸下发计划日期">
+                                    </el-date-picker>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="计划" align="center"
+                                             width="105px" sortable
+                                             v-else>
+                                <template slot-scope="scope">
+                                    {{scope.row.图纸下发计划日期}}
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="实际" align="center" width="105px" sortable>
+                                <template slot-scope="scope">
+                                    {{scope.row.图纸下发实际日期}}
+                                </template>
+                            </el-table-column>
+                        </el-table-column>
+                        <el-table-column label="货到齐日期" align="center">
+                            <el-table-column label="计划" align="center"
+                                             width="150px" sortable
+                                             v-if="setting.edit">
+                                <template slot-scope="scope">
+                                    <el-date-picker placeholder="选择日期" size="mini"
+                                                    v-model="scope.row.材料到货计划日期">
+                                    </el-date-picker>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="计划" align="center"
+                                             width="105px" sortable
+                                             v-else>
+                                <template slot-scope="scope">
+                                    {{scope.row.材料到货计划日期}}
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="实际" align="center" width="105px" sortable>
+                                <template slot-scope="scope">
+                                    {{scope.row.材料到货实际日期}}
+                                </template>
+                            </el-table-column>
+                        </el-table-column>
+                        <el-table-column label="天数" align="center">
+                            <el-table-column label="计划" align="center" width="60px" sortable>
+                                <template slot-scope="scope">
+                                    <span>{{scope.row.计划天数}}</span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="实际" align="center" width="60px" sortable>
+                                <template slot-scope="scope">
+                                    <span>{{scope.row.实际天数}}</span>
+                                </template>
+                            </el-table-column>
+                        </el-table-column>
+                        <el-table-column label="进度" align="center">
+                            <el-table-column label="采购订单" align="center" width="110px" sortable>
+                                <template v-if="!isNaN(scope.row.采购订单进度)" slot-scope="scope">
+                                    <el-progress :format="format" text-color="white"
+                                                 :text-inside="true" stroke-linecap="square" :stroke-width="20"
+                                                 :percentage="scope.row.采购订单进度">
+                                    </el-progress>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="采购到货" align="center" width="110px" sortable>
+                                <template v-if="!isNaN(scope.row.采购到货进度)" slot-scope="scope">
+                                    <el-progress :format="format" text-color="white"
+                                                 :text-inside="true" stroke-linecap="square" :stroke-width="20"
+                                                 :percentage="scope.row.采购到货进度">
+                                    </el-progress>
+                                </template>
+                            </el-table-column>
+                        </el-table-column>
+                        <el-table-column label="状态" align="center" width="90px">
+                            <template v-if="scope.row.计划天数 != undefined" slot-scope="scope">
+                                <el-tag effect="dark" size="mini"
+                                        :type="scope.row.状态[0]">{{scope.row.状态[1]}}</el-tag>
+                            </template>
+                        </el-table-column>
+                        <el-table-column label="超期天数" align="center">
+                            <el-table-column label="研发" align="center" width="60px" sortable>
+                                <template v-if="scope.row.研发超期天数 > 0" slot-scope="scope">
+                                    <span class="fw-bold text-danger">{{scope.row.研发超期天数}}</span>
+                                </template>
+                            </el-table-column>
+                            <el-table-column label="到货" align="center" width="60px" sortable>
+                                <template v-if="scope.row.到货超期天数 > 0" slot-scope="scope">
+                                    <span class="fw-bold text-danger">{{scope.row.到货超期天数}}</span>
+                                </template>
+                            </el-table-column>
+                        </el-table-column>
+                        <el-table-column label="一周预警" align="center" width="50px">
+                            <template v-if="scope.row.一周预警" slot-scope="scope">
+                                <i class="el-icon-warning text-danger"></i>
+                            </template>
+                        </el-table-column>
+                    </el-table>
+                </div>
+                <el-empty class="bg-white h-100 d-flex justify-content-center" v-else></el-empty>
+            </el-tab-pane>
+            <el-tab-pane :style="mainHeight" label="项目图表" name="2" v-if="mat.length > 0">
+                <el-form ref="conf" :model="conf" :inline="true"
+                         label-width="100px" label-position="center">
+                    <el-form-item class="m-0" label="项目开始日期">
+                        <el-date-picker size="small" v-model="conf.项目开始日期" type="date" placeholder="项目开始日期">
+                        </el-date-picker>
+                    </el-form-item>
+                    <el-form-item class="m-0" label="调整滚动日期">
+                        <el-input type="number" size="small" v-model="conf.调整滚动日期"></el-input>
+                    </el-form-item>
+                </el-form>
+                <v-gantt-chart class="mt-1 h-95" :datas="gantt" :scale="1440" :preload="0"
+                               :title-width="300" :cell-height="30"
+                               :start-time="startDate" :end-time="endDate">
+                    <template v-slot:block="{data,item}">
+                        <div class="h-75 mt-3px text-white ps-2 fs-small" :style="barStyle(data)">{{data.name}}</div>
+                    </template>
+                    <template v-slot:timeline="{day,getTimeScales}">
+                        <div class="ms-0">
+                            <div class="fs-smaller text-secondary">{{day.format("YYYY")}}</div>
+                            <div class="fs-smaller text-primary">{{day.format("MM-DD")}}</div>
+                        </div>
+                    </template>
+                    <template v-slot:left="{data}">
+                        <div class="px-2 h-100 overflow-ellipsis" :style="data.style ">{{data.name}}</div>
+                    </template>
+                    <template v-slot:title>
+                        <div class="h-100 bg-blue px-3 text-start">类别</div>
+                    </template>
+                </v-gantt-chart>
+            </el-tab-pane>
+        </el-tabs>
+        <!-- 新建 -->
+        <el-dialog title="新建" width="20%" :visible.sync="setting.add"
+                   :show-close="false" :close-on-click-modal="false">
+            <el-form class="px-3" ref="newItem" :model="form" :rules="rules"
+                     label-position="left" label-width="140px">
+                <el-form-item label="类别" prop="类别">
+                    <el-select v-model="form.类别" placeholder="类别"
+                               clearable filterable allow-create>
+                        <el-option v-for="v in progType" :key="v"
+                                   :label="v" :value="v">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="名称" prop="名称">
+                    <el-select v-model="form.名称" placeholder="名称"
+                               clearable filterable allow-create>
+                        <el-option v-for="v in progName" :key="v"
+                                   :label="v" :value="v">
+                        </el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="图纸下发计划日期">
+                    <el-date-picker placeholder="图纸下发计划日期"
+                                    v-model="form.图纸下发计划日期"
+                                    value-format="yyyy-MM-dd"></el-date-picker>
+                </el-form-item>
+                <el-form-item label="材料到货计划日期">
+                    <el-date-picker placeholder="材料到货计划日期"
+                                    v-model="form.材料到货计划日期"
+                                    value-format="yyyy-MM-dd"></el-date-picker>
+                </el-form-item>
+                <el-form-item class="text-end">
+                    <el-button @@click="setting.add = false">取消</el-button>
+                    <el-button type="primary" @@click="tblExecute('add')">确定</el-button>
+                </el-form-item>
+            </el-form>
+        </el-dialog>
+        <!-- 保存/加载 -->
+        <el-dialog :title="setting.sav? '保存': '加载'" width="40%"
+                   :visible.sync="setting.sav || setting.load"
+                   :show-close="false" :close-on-click-modal="false"
+                   @@open="getConfs">
+            <div>
+                <el-table :data="confs" :max-height="380" border stripe
+                              :highlight-current-row="setting.load"
+                              v-loading="setting.cload"
+                              element-loading-text="加载中"
+                              element-loading-spinner="el-icon-loading"
+                              @@current-change="selConf">
+                        <el-table-column label="操作" align="center" width="53px" v-if="setting.sav">
+                            <template slot-scope="scope">
+                                <el-popconfirm title="确定要删除吗？" placement="right-start"
+                                               icon="el-icon-warning" icon-color="red" v-model="setting.del"
+                                               @@confirm="delConf(scope)">
+                                    <el-button class="px-2" type="danger" size="mini" icon="el-icon-delete" 
+                                               slot="reference"></el-button>
+                                </el-popconfirm>
+                            </template>
+                        </el-table-column>
+                        <el-table-column prop="配置名称" label="配置名称" align="center" min-width="200px"></el-table-column>
+                        <el-table-column prop="修改日期" label="修改日期" align="center" width="180px"></el-table-column>
+                </el-table>
+            </div>
+            <div slot="footer" class="dialog-footer">
+                <div class="row text-center justify-content-center pb-3" v-if="setting.sav">
+                    <div class="col-auto align-self-center fs-small">配置名称：</div>
+                    <el-input class="col" size="small" v-model="conf.配置名称" placeholder="名称"></el-input>
+                </div>
+                <el-button @@click="setting.sav = setting.load = false">取消</el-button>
+                <el-button type="primary" :loading="setting.tload"
+                           @@click="tblExecute(setting.sav? 'sav' : 'load')">确定</el-button>
+            </div>
+        </el-dialog>
+    </section>
+    <script src="/Scripts/dayjs.min.js"></script>
+    <script src="/Scripts/axios.min.js"></script>
+    <script src="/Scripts/xlsx.bundle.js"></script>
+    <script src="/Scripts/modernizr-2.8.3.js"></script>
+    <script src="/Scripts/bootstrap.bundle.js"></script>
+
+    <script src="/Scripts/vue.js"></script>
+    <script src="/Scripts/element-ui/index.js"></script>
+    <script src="/Scripts/v-gantt-chart.umd.min.js"></script>
+    <script src="/Scripts/site/PurchaseProgressXN.js" type="module"></script>
+</body>
+</html>

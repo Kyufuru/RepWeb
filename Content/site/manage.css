@@ -1,0 +1,32 @@
+﻿.nav-pills .nav-link.active {
+    background-color: royalblue;
+}
+
+.el-checkbox__input.is-checked .el-checkbox__inner, .el-checkbox__input.is-indeterminate .el-checkbox__inner {
+    background-color: royalblue;
+    border-color: royalblue;
+}
+
+.el-form-item {
+    margin-bottom: 10px;
+}
+
+.el-form .el-form-item .el-form-item__content .el-select {
+    width: 100%;
+}
+
+.no-underline {
+    text-decoration: none;
+}
+
+.text-blue {
+    color: royalblue;
+}
+
+.no-transition {
+    transition: none;
+}
+
+.w-789 {
+    width: 78.9% !important;
+}

@@ -1,0 +1,65 @@
+﻿<!DOCTYPE html>
+
+<html lang="zh-cn">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="utf-8">
+    <title>中鹏报表首页</title>
+    <link rel="stylesheet" href="/Content/bootstrap.min.css">
+    <link rel="stylesheet" href="/Content/site/site.css">
+</head>
+<body>
+    <div id="vue">
+        <div class="bg-ghostwhite px-3 py-2px fs-smaller">欢迎，{{user}}</div>
+        <div class="bg-bluegradient p-5 text-center text-white fw-bold fs-1">中鹏报表首页</div>
+        <ul class="nav nav-pills m-1 bg-ghostwhite" v-if="repData.length > 0">
+            <li class="nav-item">
+                <button type="button" class="nav-link active" 
+                        data-bs-toggle="tab" data-bs-target="#主页">主页</button></li>
+            <li class="nav-item" v-for="t in repTypes" :key="t">
+                <button type="button" class="nav-link" 
+                        data-bs-toggle="tab" :data-bs-target="`#${t}`">{{t}}</button>
+            </li>
+        </ul>
+        <div class="tab-content">
+            <div class="container-fluid text-center pt-2 scoll tab-pane fade show active" 
+                    id="主页" :style="mainHeight">
+                <div class="row row-cols-lg-3 row-cols-md-2 row-cols-sm-1 justify-content-center g-2">
+                    <div class="col-lg-4 col-md-6 col-sm-12" v-for="t in repTypes" :key="t">
+                        <div class="card">
+                            <div class="card-header bg-yellow text-center fs-4">{{t}}</div>
+                            <div class="card-body row row-cols-md-2 row-cols-sm-1 justify-content-center pt-1">
+                                <div class="col-md-6 col-sm-12 g-2" v-for="r in rep(t)" :key="r.ID">
+                                    <a class="btn btn-outline-primary w-100 fs-6" :href="r.链接" target="_blank"
+                                            @@click="addStats(r)">{{r.报表名称}}</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+            <div class="container-fluid text-center pt-2 scoll tab-pane fade show" 
+                    :style="mainHeight" :id="t" v-for="t in repTypes" :key="t">
+                <div class="row justify-content-center" :style="mainHeight">
+                    <div class="col-lg-4 col-md-6 col-sm-12">
+                        <div class="card">
+                            <div class="card-header bg-yellow text-center fs-4">{{t}}</div>
+                            <div class="card-body row row-cols-md-2 row-cols-sm-1 justify-content-center pt-1">
+                                <div class="col-md-6 col-sm-12 g-2" v-for="r in rep(t)" :key="r.ID">
+                                    <a class="btn btn-outline-primary w-100 fs-6" :href="r.链接" target="_blank"
+                                       @@click="addStats(r)">{{r.报表名称}}</a>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+    <script src="/Scripts/dayjs.min.js"></script>
+    <script src="/Scripts/modernizr-2.8.3.js"></script>
+    <script src="/Scripts/bootstrap.bundle.js"></script>
+    <script src="/Scripts/axios.min.js"></script>
+    <script src="/Scripts/vue.js"></script>
+    <script src="/Scripts/site/index.js"></script>
+</body>
+</html>

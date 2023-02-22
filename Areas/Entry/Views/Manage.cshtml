@@ -1,0 +1,127 @@
+﻿<!DOCTYPE html>
+
+<html lang="zh-cn">
+<head>
+    <meta name="viewport" content="width=device-width, initial-scale=1" charset="utf-8">
+    <title>中鹏报表管理系统</title>
+    <link rel="stylesheet" href="/Scripts/element-ui/theme-chalk/index.css">
+    <link rel="stylesheet" href="/Content/bootstrap.min.css">
+    <link rel="stylesheet" href="/Content/site/site.css">
+    <link rel="stylesheet" href="/Content/site/manage.css">
+</head>
+<body>
+    <div class="bg-blue px-5 py-2 fs-3 text-white fw-bold">中鹏报表管理中心</div>
+    <div class="bg-ghostwhite p-2" id="vue">
+        <div class="nav nav-pills">
+            <button type="button" :class="`nav-link rounded-0 ${i? '' : 'active'}`"
+                    data-bs-toggle="tab" :data-bs-target="`#${t}`"
+                    v-for="(t,i) in Object.keys(tab)" :key="t" @@click="tabClick(t)">
+                <i :class="`el-icon-${tab[t].icon}`"></i>&nbsp;{{tab[t].name}}管理
+            </button>
+        </div>
+        <div class="pt-2 tab-content" v-if="tables">
+            <div :class="`tab-pane ${i? '' : 'show active'}`" :id="t"
+                 v-for="(t,i) in Object.keys(tab)" :key="t">
+                <span v-show="t != 'stat'">
+                    <el-button icon="el-icon-document-add"
+                               @@click="dial('add')">新建</el-button>
+                    <el-button class="ms-0" icon="el-icon-edit"
+                               @@click="dial('edit')">编辑</el-button>
+                </span>
+                <el-popconfirm title="确定要删除吗？" placement="bottom-start"
+                               icon="el-icon-warning" icon-color="red"
+                               v-model="setting.del" @@confirm="exec('del')">
+                    <el-button type="danger" icon="el-icon-delete"
+                               slot="reference">删除</el-button>
+                </el-popconfirm>
+                <el-input class="w-auto" placeholder="搜索" v-model="query"></el-input>
+                <el-pagination class="d-inline-block" layout="total, prev, pager, next, jumper"
+                               :current-page.sync="curPage" :page-size="100" :total="tblLen"
+                               background hide-on-single-page>
+                </el-pagination>
+                <el-table class="mt-1 h-100" :ref="t" :data="search" :max-height="tableH" border
+                          header-cell-class-name="text-center" cell-class-name="text-center"
+                          @@row-click="rowClick" @@selection-change="select" @@select-all="selectAll">
+                    <el-table-column type="selection" width="50" align="center"></el-table-column>
+                    <el-table-column prop="用户" label="用户" width="200px"
+                                     v-if="t != 'rep'" sortable></el-table-column>
+                    <el-table-column prop="部门" label="部门" width="200px"
+                                     v-if="t == 'user'" sortable></el-table-column>
+                    <el-table-column prop="UUID" label="UUID" width="300px"
+                                     v-if="t == 'user'" sortable></el-table-column>
+                    <el-table-column prop="报表类别" label="报表类别" width="200px"
+                                     v-if="t == 'rep'" sortable></el-table-column>
+                    <el-table-column prop="报表名称" label="报表名称" width="300px"
+                                     v-if="t != 'user'" sortable></el-table-column>
+                    <el-table-column prop="链接" label="链接" width="400px"
+                                     v-if="t == 'rep'" sortable></el-table-column>
+                    <el-table-column prop="IP" label="IP" width="150px"
+                                     v-if="t == 'stat'" sortable></el-table-column>
+                    <el-table-column prop="渠道" label="渠道" width="80px"
+                                     v-if="t == 'stat'" sortable></el-table-column>
+                    <el-table-column prop="本地时间" label="本地时间" width="200px"
+                                     v-if="t == 'stat'" sortable></el-table-column>
+                    <el-table-column prop="服务器时间" label="服务器时间" width="200px"
+                                     v-if="t == 'stat'" sortable></el-table-column>
+                </el-table>
+            </div>
+        </div>
+        <!-- 编辑/新建 -->
+        <el-dialog :title="dialTitle" width="25%" center
+                   :show-close="false" :close-on-click-modal="false"
+                   :visible.sync="setting.edit || setting.add" v-if="tables">
+            <el-form class="p-4" ref="form" :model="form"
+                     label-position="left" label-width="90px">
+                <el-form-item label="用户" v-if="curTab != 'rep'">
+                    <el-select v-model="form.用户" v-if="curTab != 'user'" filterable>
+                        <el-option v-for="un in userNames" :key="un"
+                                   :value="un">{{un}}</el-option>
+                    </el-select>
+                    <el-input placeholder="用户" suffix-icon="el-icon-user-solid"
+                              v-model="form.用户" v-else clearable></el-input>
+                </el-form-item>
+                <el-form-item label="报表类别" v-else>
+                    <el-select v-model="form.报表类别" :allow-create="setting.add" filterable>
+                        <el-option v-for="rt in repTypes" :key="rt"
+                                   :value="rt">{{rt}}</el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="用户复制" v-if="curTab == 'user' && setting.edit">
+                    <el-select v-model="form.复制" filterable>
+                        <el-option v-for="un in userNames" :key="un"
+                                   :value="un">{{un}}</el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="部门" v-if="curTab == 'user'">
+                    <el-select v-model="form.部门" allow-create filterable clearable>
+                        <el-option v-for="ud in userDepts" :key="ud"
+                                   :value="ud">{{ud}}</el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="报表名称" v-else>
+                    <el-select v-model="form.报表名称" :allow-create="setting.add" 
+                               filterable :multiple="curTab == 'auth' && setting.add">
+                        <el-option v-for="rn in repNames" :key="rn"
+                                   :value="rn">{{rn}}</el-option>
+                    </el-select>
+                </el-form-item>
+                <el-form-item label="链接" v-if="curTab == 'rep'">
+                    <el-input placeholder="链接" suffix-icon="el-icon-link"
+                              v-model="form.链接" clearable></el-input>
+                </el-form-item>
+            </el-form>
+            <span slot="footer" class="dialog-footer">
+                <el-button @@click="setting.add = setting.edit = false">取消</el-button>
+                <el-button type="primary" @@click="exec(setting.add? 'add': form.复制? 'copy' : 'edit')">确定</el-button>
+            </span>
+        </el-dialog>
+    </div>
+    <script src="/Scripts/dayjs.min.js"></script>
+    <script src="/Scripts/axios.min.js"></script>
+    <script src="/Scripts/modernizr-2.8.3.js"></script>
+    <script src="/Scripts/bootstrap.bundle.js"></script>
+    <script src="/Scripts/vue.js"></script>
+    <script src="/Scripts/element-ui/index.js"></script>
+    <script src="/Scripts/site/manage.js"></script>
+</body>
+</html>

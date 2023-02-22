@@ -1,0 +1,106 @@
+﻿html, body {
+    width: 100%;
+    height: 100%;
+}
+
+::-webkit-scrollbar {
+    width: 8px;
+    height: 10px;
+}
+
+::-webkit-scrollbar-track {
+    background-color: none;
+}
+
+::-webkit-scrollbar-thumb {
+    background-color: gainsboro;
+    border-radius: 3px;
+}
+
+input::-webkit-outer-spin-button, input::-webkit-inner-spin-button {
+    -webkit-appearance: none;
+}
+
+.bg-bluegradient {
+    background: linear-gradient(to right, #5f8cd5, #376fca 15%, #376fca 85%, #5f8cd5);
+}
+
+.bg-blue {
+    background-color: royalblue;
+}
+
+.bg-yellow {
+    background-color: #FFDA6A;
+}
+
+.bg-ghostwhite {
+    background-color: ghostwhite;
+}
+
+.mt-3px {
+    margin-top: 3px;
+}
+
+.py-2px {
+    padding-top: 2px;
+    padding-bottom: 2px;
+}
+
+.fs-small {
+    font-size: 0.9rem;
+}
+
+.fs-smaller {
+    font-size: smaller;
+}
+
+.fs-huge {
+    font-size: 3.5rem;
+}
+
+.h-95 {
+    height: 95% !important;
+}
+
+.w-300 {
+    width: 300px
+}
+
+.maxh-200 {
+    max-height: 200px;
+}
+
+.scoll {
+    overflow-y: auto;
+    overflow-x: auto;
+}
+
+.scoll-y {
+    overflow-y: scroll !important;
+    overflow-x: hidden;
+}
+
+.scoll-x {
+    overflow-x: scroll !important;
+    overflow-y: hidden;
+}
+
+.hidden-y {
+    overflow-y: hidden;
+}
+
+.el-dialog__header {
+    border-bottom: 1px solid lightgray;
+}
+
+.el-dialog--center .el-dialog__body {
+    padding: 0px;
+}
+
+.el-dialog__footer {
+    border-top: 1px solid lightgray;
+}
+
+.cell {
+    cursor: default;
+}
