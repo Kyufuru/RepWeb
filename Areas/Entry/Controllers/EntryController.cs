@@ -280,14 +280,15 @@ namespace 报表综合平台.Areas.Entry.Controllers
         [HttpPost]
         public IHttpActionResult AddStat([FromBody]J数据中心_统计表 req)
         {
-            if (HttpContext.Current.Request.UserHostAddress == "::1") return Ok();
+            string ip = HttpContext.Current.Request.UserHostAddress;
+            if ( ip == "::1" || ip.StartsWith("10.10.141")) return Ok();
             string sqlUser = $"SELECT ID,用户 FROM 统计类报表.dbo.J数据中心_用户表 WHERE 用户 = '{req.用户}'";
             string sqlRep = $"SELECT ID,报表名称 FROM 统计类报表.dbo.J数据中心_功能表 WHERE 报表名称 = '{req.报表名称}'";
             try
             {
                 using (var db = new SqlConnection(CONNSTR))
                 {
-                    req.IP = HttpContext.Current.Request.UserHostAddress;
+                    req.IP = ip;
                     req.用户ID = db.QuerySingle<J数据中心_用户表>(sqlUser).ID;
                     req.报表ID = db.QuerySingle<J数据中心_功能表>(sqlRep).ID;
                     req.服务器时间 = DateTime.Now;
