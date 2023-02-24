@@ -22,7 +22,7 @@ namespace 报表综合平台.Areas.Report.Controllers
         readonly static string CONNSTR_IMG = ConfigurationManager.ConnectionStrings["中间层镜像"].ConnectionString;
         public static Dictionary<string, object> session = new Dictionary<string, object>();
 
-        static readonly Regex regPNo = new Regex(@".*\d{2}", RegexOptions.Compiled);
+        static readonly Regex regPNo = new Regex(@".*\d{2}[A-Z]?(?=-)", RegexOptions.Compiled);
         static readonly Regex regBnk = new Regex(@"\s+", RegexOptions.Compiled);
         static readonly Regex regCol = new Regex(@"类别|图纸|材料", RegexOptions.Compiled);
         static readonly Regex regSep = new Regex(@"(及|包括|等|部分|[\s,.\(\)，、。（）])+", RegexOptions.Compiled);
@@ -34,91 +34,56 @@ namespace 报表综合平台.Areas.Report.Controllers
             AND 名称 = '{0}'
         )";
         static readonly string sqlBom = @"
-        SELECT
+        WITH A1 AS (
+            SELECT ID FROM 工程表
+            WHERE 组织ID = 100458 
+            AND 部门属性 = '基本生产部门'
+            AND 名称 = '{0}'
+        ),A2 AS (
+            SELECT 工程ID,产品ID,子项物料ID
+            FROM 生产用料清单
+            WHERE 组织ID = 100458 
+            UNION ALL 
+            SELECT 工程ID,产品ID,子项物料ID
+            FROM 委外用料清单
+            WHERE 组织ID = 100458 
+        ),A3 AS (
+            SELECT 工程ID,物料ID,下达日期
+            FROM 生产订单
+            WHERE 组织ID = 100458 
+            UNION ALL
+            SELECT 工程ID,物料ID,下达日期
+            FROM 委外订单
+            WHERE 组织ID = 100458 
+        ),A4 AS (
+            SELECT DISTINCT 工程ID,物料ID,允许采购数量,行业务关闭
+            FROM 采购申请单
+            WHERE 组织ID = 100458 
+        ),A5 AS (
+            SELECT DISTINCT 工程ID,物料ID,实收数量,审核日期
+            FROM 采购入库单
+            WHERE 组织ID = 100458
+        ),A6 AS (
+            SELECT ID,物料名称 产品名称
+            FROM 物料表 
+            WHERE 组织ID = 100458
+            AND 物料名称 LIKE '%[A-Z]2%'
+        )
+        SELECT 
             产品名称,
-            COUNT(*) 单据数量,
-            CASE WHEN SUM(IIF(下达日期 IS NULL,1,0)) = 0
-                THEN MAX(下达日期)
-            END 图纸下发实际日期,
-            CASE WHEN SUM(IIF(实收数量 < 允许采购数量 OR 实收数量 IS NULL,1,0)) = 0
-                THEN MAX(审核日期)
-            END 材料到货实际日期,
+            COUNT(1) 单据数量,
+            MAX(COALESCE(下达日期,NULL)) 图纸下发实际日期,
+            IIF(SUM(实收数量) >= SUM(允许采购数量),MAX(审核日期),NULL) 材料到货实际日期,
             SUM(IIF(行业务关闭 = 'B',1,0)) 订单完成数量,
             SUM(IIF(实收数量 >= 允许采购数量,1,0)) 到货完成数量
-        FROM (
-            SELECT 
-                ID,
-                物料名称 产品名称
-            FROM 物料表 
-            WHERE 物料名称 NOT LIKE '（禁用）%'
-        ) A1
-        LEFT JOIN (
-                SELECT
-                    产品ID,
-                    工程ID,
-                    子项物料ID
-                FROM
-                    生产用料清单
-                WHERE 组织ID = '100458'
-                UNION ALL
-                SELECT
-                    产品ID,
-                    工程ID,
-                    子项物料ID
-                FROM
-                    委外用料清单
-                WHERE 组织ID = '100458'
-        ) A2 ON A2.产品ID = A1.ID
-        RIGHT JOIN (
-            SELECT
-                ID,
-                名称
-            FROM 工程表
-            WHERE 组织ID = '100458' AND 名称 = '{0}' AND 部门属性 = '基本生产部门'
-        ) A3 ON A3.ID = A2.工程ID
-        LEFT JOIN (
-            SELECT
-                物料ID,
-                工程ID,
-                下达日期
-            FROM
-                生产订单
-            WHERE 组织ID = '100458'
-            UNION ALL
-            SELECT
-                物料ID,
-                工程ID,
-                下达日期
-            FROM
-                委外订单
-            WHERE 组织ID = '100458'
-        ) A4 ON A4.工程ID = A3.ID
-            AND A4.物料ID = A2.产品ID
-        LEFT JOIN (
-            SELECT
-                物料ID,
-                工程ID,
-                允许采购数量,
-                行业务关闭
-            FROM
-                采购申请单
-            WHERE 组织ID = '100458'
-        ) A5 ON A5.工程ID = A3.ID
-            AND A5.物料ID = A2.子项物料ID
-        LEFT JOIN (
-            SELECT
-                物料ID,
-                工程ID,
-                实收数量,
-                审核日期
-            FROM
-                采购入库单
-            WHERE 组织ID = '100458'
-        ) A6 ON A6.工程ID = A3.ID
-            AND A6.物料ID = A2.子项物料ID
+        FROM A1
+        LEFT JOIN A2 ON A2.工程ID = A1.ID
+        LEFT JOIN A3 ON A3.工程ID = A1.ID AND A3.物料ID = A2.产品ID
+        LEFT JOIN A4 ON A4.工程ID = A1.ID AND A4.物料ID = A2.子项物料ID
+        LEFT JOIN A5 ON A5.工程ID = A1.ID AND A5.物料ID = A2.子项物料ID
+        JOIN A6 ON A6.ID = A2.产品ID
         GROUP BY 产品名称
-        ORDER BY 产品名称
-        ";
+        ORDER BY 产品名称";
 
         /// <summary>
         /// 转换成日期或NULL
